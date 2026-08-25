@@ -1,0 +1,20 @@
+import { expect, test } from "@playwright/test";
+
+async function startRanch(page: import("@playwright/test").Page): Promise<void> { await page.goto("/"); await expect(page.getByRole("heading", { name: "MOWBOT" })).toBeVisible(); await page.getByRole("button", { name: "Mow Lawn" }).first().click(); await expect(page.locator("canvas")).toBeVisible(); }
+
+test("renders a playable lawn, moves the mower, updates coverage, and reaches results", async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== "desktop", "Desktop interaction flow"); const errors: string[] = []; page.on("console", (message) => { if (message.type() === "error" && !message.text().includes("404")) errors.push(message.text()); }); await startRanch(page);
+  await expect(page.getByText("Coverage")).toBeVisible(); const canvas = page.locator("canvas"); await canvas.screenshot({ path: testInfo.outputPath("ranch-world.png") }); const imageLength = await canvas.evaluate((node) => (node as HTMLCanvasElement).toDataURL().length); expect(imageLength).toBeGreaterThan(10_000);
+  const before = await page.evaluate(() => window.__MOWBOT_DEBUG__?.mower()); await page.keyboard.down("w"); await page.waitForTimeout(900); await page.keyboard.up("w"); const after = await page.evaluate(() => window.__MOWBOT_DEBUG__?.mower()); expect(after?.z).not.toBe(before?.z); await page.keyboard.down("w"); await page.keyboard.down("ArrowLeft"); await page.waitForTimeout(250); await page.keyboard.up("ArrowLeft"); await page.keyboard.up("w"); const afterLeft = await page.evaluate(() => window.__MOWBOT_DEBUG__?.mower()); expect(afterLeft?.x).toBeGreaterThan(after!.x); await expect(page.locator("[data-hud=coverage]")).not.toHaveText("0.0%");
+  await page.keyboard.press("Escape"); await expect(page.getByRole("heading", { name: "Paused" })).toBeVisible(); await page.getByRole("button", { name: "Garage" }).click(); await expect(page.getByRole("heading", { name: "Garage" })).toBeVisible(); await page.getByRole("button", { name: "Back" }).click(); await page.getByRole("button", { name: "Mow Lawn" }).first().click(); await page.evaluate(() => window.__MOWBOT_DEBUG__?.complete()); await expect(page.getByText("LAWN COMPLETE")).toBeVisible(); expect(errors).toEqual([]); await page.screenshot({ path: testInfo.outputPath("ranch-results.png") });
+});
+
+test("starts every data-driven lawn", async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== "desktop", "Desktop level smoke flow");
+  for (let index = 0; index < 5; index += 1) { await page.goto("/"); await page.getByRole("button", { name: "Mow Lawn" }).nth(index).click(); await expect(page.locator("canvas")).toBeVisible(); await expect(page.getByText("Coverage")).toBeVisible(); }
+});
+
+test("shows mobile touch controls and return dock action", async ({ page }, testInfo) => {
+  test.skip(!testInfo.project.name.startsWith("mobile-"), "Mobile control check");
+  await startRanch(page); const forward = page.getByRole("button", { name: "Drive forward" }); await expect(forward).toBeVisible(); await expect(page.getByRole("button", { name: "Drive backward" })).toBeVisible(); await expect(page.getByRole("button", { name: "Turn left" })).toBeVisible(); await expect(page.getByRole("button", { name: "Turn right" })).toBeVisible(); await expect(page.getByRole("button", { name: "Return mower to base" })).toBeVisible(); const before = await page.evaluate(() => window.__MOWBOT_DEBUG__?.mower()); const box = await forward.boundingBox(); expect(box).not.toBeNull(); await page.mouse.move(box!.x + box!.width / 2, box!.y + box!.height / 2); await page.mouse.down(); await page.waitForTimeout(300); await page.mouse.up(); const after = await page.evaluate(() => window.__MOWBOT_DEBUG__?.mower()); expect(after?.z).not.toBe(before?.z); await page.evaluate(() => window.__MOWBOT_DEBUG__?.hazard()); await page.getByRole("button", { name: "Return mower to base" }).click(); await expect(page.locator("[data-hud=message]")).toHaveText("Returning to base"); await page.screenshot({ path: testInfo.outputPath("mobile-controls.png") });
+});

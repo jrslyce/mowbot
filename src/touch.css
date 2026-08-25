@@ -1,0 +1,63 @@
+#app, .screen-shell, .game-root { height: 100dvh; }
+
+.touch-controls {
+  position: fixed;
+  z-index: 6;
+  right: max(16px, env(safe-area-inset-right));
+  bottom: max(16px, env(safe-area-inset-bottom));
+  inset: auto max(16px, env(safe-area-inset-right)) max(16px, env(safe-area-inset-bottom)) auto;
+  display: none;
+  flex-direction: column;
+  align-items: end;
+  gap: 10px;
+  touch-action: none;
+}
+
+.touch-pad {
+  display: grid;
+  grid-template-columns: repeat(3, 50px);
+  grid-template-rows: repeat(3, 50px);
+  gap: 3px;
+}
+
+.touch-direction {
+  width: 50px;
+  height: 50px;
+  min-width: 50px;
+  min-height: 50px;
+  padding: 0;
+  border: 1px solid rgba(245, 255, 230, 0.68);
+  border-radius: 5px;
+  background: rgba(20, 42, 47, 0.88);
+  color: #f5f5e9;
+  font-size: 26px;
+  line-height: 1;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.touch-direction:active { background: #f2c75d; color: #152431; }
+.touch-up { grid-column: 2; grid-row: 1; }
+.touch-left { grid-column: 1; grid-row: 2; }
+.touch-right { grid-column: 3; grid-row: 2; }
+.touch-down { grid-column: 2; grid-row: 3; }
+
+.touch-return {
+  min-width: 96px;
+  min-height: 54px;
+  background: rgba(235, 242, 222, 0.92);
+}
+
+@media (hover: none) and (pointer: coarse) {
+  .touch-controls { display: flex; }
+}
+
+@media (max-width: 700px) and (orientation: portrait) {
+  .hud-bottom {
+    align-self: stretch;
+    flex-wrap: wrap;
+    margin-bottom: calc(240px + env(safe-area-inset-bottom));
+  }
+
+  .hud-bottom .message { flex-basis: 100%; }
+}
