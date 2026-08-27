@@ -1,7 +1,8 @@
 export type Vec2 = { x: number; z: number };
 export type Rank = "S" | "A" | "B" | "C" | "F";
-export type RunStatus = "playing" | "paused" | "complete" | "failed";
+export type RunStatus = "playing" | "paused" | "complete" | "failed" | "stopped";
 export type AnimalKind = "dog" | "cat" | "squirrel";
+export type LawnDropKind = "fruit" | "frisbee" | "ball" | "animal";
 export type Collider =
   | { kind: "circle"; radius: number }
   | { kind: "rect"; width: number; depth: number };
@@ -29,6 +30,8 @@ export interface Hazard {
 
 export interface AnimalDefinition { id: string; kind: AnimalKind; home: Vec2; roam: number; }
 export interface Collectible { id: string; unlockId: string; position: Vec2; hidden: boolean; revealRadius: number; }
+export interface LawnDrop { id: string; kind: LawnDropKind; name: string; position: Vec2; radius: number; collected: boolean; }
+export interface LawnInspection { name: string; model: string; detail: string; kind: "mower" | "object" | "hazard" | "animal" | "upgrade" | "drop"; visual: string; }
 
 export interface LevelDefinition {
   id: string;
@@ -46,7 +49,7 @@ export interface LevelDefinition {
 }
 
 export interface NormalizedInput { steer: number; throttle: number; brake: number; reverse: number; interact: boolean; pause: boolean; }
-export interface EquippedLoadout { body: string; color: string; mobility: string; deck: string; battery: string; sensor: string; }
+export interface EquippedLoadout { body: string; color: string; mobility: string; deck: string; battery: string; sensor: string; dock: string; }
 export interface MowerStats { maxSpeed: number; acceleration: number; turnSpeed: number; deckRadius: number; capacity: number; rechargeRate: number; drain: number; sensorRadius: number; color: string; tracks: boolean; }
 export interface RunState {
   levelId: string;

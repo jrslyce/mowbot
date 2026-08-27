@@ -1,15 +1,18 @@
 import { getLevel } from "./data/levels";
 import { calculateStats } from "./data/upgrades";
 import { calculateResults, distance, GrassGrid } from "./systems";
-import type { AnimalDefinition, EquippedLoadout, LevelDefinition, NormalizedInput, Results, RunState, Vec2 } from "./types";
+import type { AnimalDefinition, EquippedLoadout, LawnDrop, LawnDropKind, LevelDefinition, LevelObject, NormalizedInput, Results, RunState, Vec2 } from "./types";
 
 type AnimalRuntime = AnimalDefinition & { position: Vec2; phase: number; state: "idle" | "wander" | "alert" | "flee" | "return"; bumped: boolean };
+type TreeDropState = { bumps: number; nextDropAt: number };
 const emptyInput: NormalizedInput = { steer: 0, throttle: 0, brake: 0, reverse: 0, interact: false, pause: false };
 const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value));
+const dropKinds: LawnDropKind[] = ["fruit", "frisbee", "ball", "animal"];
+const dropNames: Record<LawnDropKind, string> = { fruit: "Fallen Fruit", frisbee: "Frisbee", ball: "Yard Ball", animal: "Startled Yard Critter" };
 
 export class GameEngine {
   level: LevelDefinition; grass: GrassGrid; state: RunState; mower: { position: Vec2; angle: number; speed: number; invulnerable: number };
-  hazards: Map<string, { revealed: boolean; hit: boolean }> = new Map(); collectibles = new Set<string>(); animals: AnimalRuntime[]; results: Results | null = null; private docked = true; private streak = 0; private returningToDock = false; private returnPath: Vec2[] = [];
+  hazards: Map<string, { revealed: boolean; hit: boolean }> = new Map(); collectibles = new Set<string>(); drops: LawnDrop[] = []; animals: AnimalRuntime[]; results: Results | null = null; private docked = true; private streak = 0; private returningToDock = false; private returnPath: Vec2[] = []; private treeDrops = new Map<string, TreeDropState>();
   constructor(levelId: string, readonly loadout: EquippedLoadout) {
     this.level = getLevel(levelId); this.grass = new GrassGrid(this.level.world.width, this.level.world.depth, this.level.world.cellSize, this.level.excluded);
     const stats = calculateStats(loadout);
@@ -25,17 +28,48 @@ export class GameEngine {
     const stats = this.stats; const reserve = this.state.reserveMode.active; const maxSpeed = stats.maxSpeed * (reserve ? 0.35 : 1);
     if (this.returningToDock && (Math.abs(input.steer) > 0.08 || input.throttle > 0.08 || input.reverse > 0.08 || input.brake > 0.08)) this.cancelReturnToDock();
     if (this.returningToDock) this.followReturnPath(dt, maxSpeed);
-    else { const requested = input.throttle * maxSpeed - input.reverse * 2; const accel = (input.brake > 0 ? 18 : stats.acceleration) * dt; this.mower.speed += clamp(requested - this.mower.speed, -accel, accel); if (input.brake > 0 && Math.abs(this.mower.speed) < 0.15) this.mower.speed = 0; const turn = input.steer * stats.turnSpeed * clamp(Math.abs(this.mower.speed) / Math.max(0.2, maxSpeed), 0.3, 1) * dt; this.mower.angle -= turn; const next = { x: this.mower.position.x + Math.sin(this.mower.angle) * this.mower.speed * dt, z: this.mower.position.z + Math.cos(this.mower.angle) * this.mower.speed * dt }; if (this.blocked(next)) this.mower.speed = 0; else this.mower.position = next; }
+    else { const requested = input.throttle * maxSpeed - input.reverse * 2; const accel = (input.brake > 0 ? 18 : stats.acceleration) * dt; this.mower.speed += clamp(requested - this.mower.speed, -accel, accel); if (input.brake > 0 && Math.abs(this.mower.speed) < 0.15) this.mower.speed = 0; const turn = input.steer * stats.turnSpeed * clamp(Math.abs(this.mower.speed) / Math.max(0.2, maxSpeed), 0.3, 1) * dt; this.mower.angle -= turn; const next = { x: this.mower.position.x + Math.sin(this.mower.angle) * this.mower.speed * dt, z: this.mower.position.z + Math.cos(this.mower.angle) * this.mower.speed * dt }; const blocker = this.blockingObject(next); if (this.outsideBoundary(next)) this.bounceOffBoundary(next); else if (blocker) { this.handleObjectBump(blocker); this.mower.speed = 0; } else this.mower.position = next; }
     this.updateAnimals(dt); this.updateRevealAndContacts();
     const newlyCut = reserve ? 0 : this.grass.cutFootprint(this.mower.position, stats.deckRadius); this.state.cutCells = this.grass.cut; this.state.completionPercent = this.grass.completion;
     if (newlyCut > 0) { this.streak += newlyCut; this.state.score += newlyCut * 10; if (this.streak >= 100) { this.state.multiplier = Math.min(3, Math.round((this.state.multiplier + 0.05) * 100) / 100); this.streak = 0; } }
     this.updateBattery(dt, newlyCut > 0); if (this.state.status !== "playing") return;
     if (this.state.completionPercent >= this.level.scoring.requiredCompletionPercent) this.complete();
   }
-  private blocked(point: Vec2): boolean {
-    const bounds = this.level.world; if (Math.abs(point.x) > bounds.width / 2 - bounds.boundaryPadding || Math.abs(point.z) > bounds.depth / 2 - bounds.boundaryPadding) return true;
-    return this.level.objects.filter((object) => object.type !== "dock").some((object) => object.collider.kind === "circle" ? distance(point, object.position) < object.collider.radius + 0.45 : Math.abs(point.x - object.position.x) < object.collider.width / 2 + 0.45 && Math.abs(point.z - object.position.z) < object.collider.depth / 2 + 0.45);
+  private outsideBoundary(point: Vec2): boolean {
+    const bounds = this.level.world; return Math.abs(point.x) > bounds.width / 2 - bounds.boundaryPadding || Math.abs(point.z) > bounds.depth / 2 - bounds.boundaryPadding;
   }
+  private bounceOffBoundary(next: Vec2): void {
+    const bounds = this.level.world; const limitX = bounds.width / 2 - bounds.boundaryPadding; const limitZ = bounds.depth / 2 - bounds.boundaryPadding;
+    const direction = Math.sign(this.mower.speed) || 1; const velocity = { x: Math.sin(this.mower.angle) * this.mower.speed, z: Math.cos(this.mower.angle) * this.mower.speed };
+    if (next.x < -limitX || next.x > limitX) velocity.x *= -0.82;
+    if (next.z < -limitZ || next.z > limitZ) velocity.z *= -0.82;
+    this.mower.position = { x: clamp(next.x, -limitX, limitX), z: clamp(next.z, -limitZ, limitZ) };
+    const magnitude = Math.hypot(velocity.x, velocity.z);
+    if (magnitude > 0.01) { this.mower.angle = Math.atan2(velocity.x * direction, velocity.z * direction); this.mower.speed = direction * magnitude; }
+    this.state.message = "Edge bounce — back on the lawn";
+  }
+  private blocked(point: Vec2): boolean {
+    // Driveways and patios are non-mowable surfaces, but they must stay drivable so a dock can sit on one.
+    return Boolean(this.blockingObject(point));
+  }
+  private blockingObject(point: Vec2): LevelObject | null {
+    return this.level.objects.filter((object) => !["dock", "driveway", "patio"].includes(object.type)).find((object) => object.collider.kind === "circle" ? distance(point, object.position) < object.collider.radius + 0.45 : Math.abs(point.x - object.position.x) < object.collider.width / 2 + 0.45 && Math.abs(point.z - object.position.z) < object.collider.depth / 2 + 0.45) ?? null;
+  }
+  private handleObjectBump(object: LevelObject): void {
+    if (object.type !== "tree") return;
+    const runtime = this.treeDrops.get(object.id) ?? { bumps: 0, nextDropAt: 0 }; runtime.bumps += 1;
+    if (this.state.elapsedSeconds < runtime.nextDropAt) { this.treeDrops.set(object.id, runtime); return; }
+    const roll = Math.abs(Math.sin(runtime.bumps * 12.989 + object.position.x * 78.233 + object.position.z * 37.719));
+    if (runtime.bumps % 3 === 0 || roll < 0.58) {
+      const kind = dropKinds[(runtime.bumps + object.id.length + Math.floor(this.state.elapsedSeconds)) % dropKinds.length];
+      const spread = 0.95; const angle = this.mower.angle + Math.PI;
+      this.drops.push({ id: `${object.id}-drop-${runtime.bumps}`, kind, name: dropNames[kind], position: { x: object.position.x + Math.sin(angle) * spread, z: object.position.z + Math.cos(angle) * spread }, radius: kind === "frisbee" ? 0.42 : 0.35, collected: false });
+      runtime.nextDropAt = this.state.elapsedSeconds + 1.5; this.state.message = `${dropNames[kind]} dropped from the tree`;
+    } else this.state.message = "Tree bumped: branches shook";
+    this.treeDrops.set(object.id, runtime);
+  }
+  get isAtDock(): boolean { return distance(this.mower.position, this.level.start.dock) < 1.3; }
+  stopMowingAtDock(): void { if (!this.isAtDock || this.state.status !== "playing") return; this.state.status = "stopped"; this.results = calculateResults({ cutCells: this.state.cutCells, completion: this.state.completionPercent, elapsed: this.state.elapsedSeconds, target: this.level.scoring.targetTimeSeconds, strikes: this.state.strikesRemaining, collectibles: this.collectibles.size, batteryPercent: (this.state.batteryEnergy / this.state.batteryCapacity) * 100, multiplier: this.state.multiplier, charges: this.state.chargesUsed }); this.state.score = this.results.score; this.state.message = "Mowing stopped at the dock"; }
   returnToDock(): void {
     if (this.returningToDock) { this.cancelReturnToDock(); return; }
     if (distance(this.mower.position, this.level.start.dock) < 1.3) { this.state.message = "Already at base"; return; }
@@ -66,11 +100,12 @@ export class GameEngine {
     const sensor = this.stats.sensorRadius;
     for (const hazard of this.level.hazards) { const runtime = this.hazards.get(hazard.id)!; if (runtime.hit) continue; const close = distance(this.mower.position, hazard.position); if (close < sensor || this.grass.centers.some((cell, index) => this.grass.states[index] === 2 && distance(cell, hazard.position) < hazard.revealRadius)) runtime.revealed = true; if (close < hazard.radius + 0.45) this.strike(hazard.id, `${hazard.type} hit`); }
     for (const collectible of this.level.collectibles) { if (this.collectibles.has(collectible.id)) continue; if (distance(this.mower.position, collectible.position) < 0.8) { this.collectibles.add(collectible.id); this.state.collectedThisRun.push(collectible.id); this.state.score += 750; this.state.message = "Upgrade part recovered"; } }
+    for (const drop of this.drops) { if (drop.collected) continue; if (distance(this.mower.position, drop.position) < drop.radius + 0.48) { drop.collected = true; this.state.score += 125; this.state.message = `${drop.name} picked up`; } }
     for (const animal of this.animals) if (!animal.bumped && distance(this.mower.position, animal.position) < 0.75) { animal.bumped = true; animal.state = "flee"; this.strike(animal.id, `${animal.kind} startled safely`); }
   }
   private updateAnimals(dt: number): void { for (const animal of this.animals) { const away = distance(this.mower.position, animal.position); if (away < 3.2) animal.state = "flee"; else if (away > 4.5 && animal.state === "flee") animal.state = "return"; const target = animal.state === "flee" ? { x: animal.position.x + (animal.position.x - this.mower.position.x), z: animal.position.z + (animal.position.z - this.mower.position.z) } : animal.state === "return" ? animal.home : { x: animal.home.x + Math.sin(this.state.elapsedSeconds * 0.8 + animal.phase) * animal.roam, z: animal.home.z + Math.cos(this.state.elapsedSeconds * 0.65 + animal.phase) * animal.roam }; const dx = target.x - animal.position.x; const dz = target.z - animal.position.z; const length = Math.hypot(dx, dz) || 1; animal.position.x += (dx / length) * dt * (animal.state === "flee" ? 3.2 : 0.8); animal.position.z += (dz / length) * dt * (animal.state === "flee" ? 3.2 : 0.8); } }
   private strike(id: string, label: string): void { if (this.mower.invulnerable > 0 || this.state.hazardsHit.includes(id)) return; this.mower.invulnerable = 1.25; this.state.hazardsHit.push(id); const hazard = this.hazards.get(id); if (hazard) hazard.hit = true; this.state.strikesRemaining -= 1; this.state.score = Math.max(0, this.state.score - 350); this.state.multiplier = 1; this.streak = 0; this.state.message = `${label}: ${this.state.strikesRemaining} strikes left`; if (this.state.strikesRemaining <= 0) this.fail("Three strikes used"); }
   private complete(): void { this.state.status = "complete"; this.results = calculateResults({ cutCells: this.state.cutCells, completion: this.state.completionPercent, elapsed: this.state.elapsedSeconds, target: this.level.scoring.targetTimeSeconds, strikes: this.state.strikesRemaining, collectibles: this.collectibles.size, batteryPercent: (this.state.batteryEnergy / this.state.batteryCapacity) * 100, multiplier: this.state.multiplier, charges: this.state.chargesUsed }); this.state.score = this.results.score; this.state.message = this.results.perfect ? "Perfect Lawn" : "Lawn complete"; }
   private fail(message: string): void { this.state.status = "failed"; this.state.message = message; this.results = calculateResults({ cutCells: this.state.cutCells, completion: this.state.completionPercent, elapsed: this.state.elapsedSeconds, target: this.level.scoring.targetTimeSeconds, strikes: this.state.strikesRemaining, collectibles: this.collectibles.size, batteryPercent: 0, multiplier: this.state.multiplier, charges: this.state.chargesUsed }); }
-  debug = { complete: () => { this.grass.cutAll(); this.state.cutCells = this.grass.cut; this.state.completionPercent = 100; this.complete(); }, setBatteryPercent: (percent: number) => { this.state.batteryEnergy = this.state.batteryCapacity * clamp(percent, 0, 100) / 100; }, teleportToDock: () => { this.mower.position = { ...this.level.start.dock }; }, teleportToHazard: () => { const hazard = this.level.hazards.find((item) => !this.hazards.get(item.id)?.hit); if (hazard) this.mower.position = { ...hazard.position }; } };
+  debug = { complete: () => { this.grass.cutAll(); this.state.cutCells = this.grass.cut; this.state.completionPercent = 100; this.complete(); }, setBatteryPercent: (percent: number) => { this.state.batteryEnergy = this.state.batteryCapacity * clamp(percent, 0, 100) / 100; }, teleportToDock: () => { this.mower.position = { ...this.level.start.dock }; }, teleportToHazard: () => { const hazard = this.level.hazards.find((item) => !this.hazards.get(item.id)?.hit); if (hazard) this.mower.position = { ...hazard.position }; }, teleportToCollectible: () => { const item = this.level.collectibles.find((collectible) => !this.collectibles.has(collectible.id)); if (item) this.mower.position = { ...item.position }; }, bumpTreeDrop: () => { const tree = this.level.objects.find((object) => object.type === "tree"); if (tree) this.handleObjectBump(tree); } };
 }
