@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { levels, validateLevel } from "./data/levels";
-import { calculateStats, starterLoadout } from "./data/upgrades";
+import { calculateStats, parts, starterLoadout } from "./data/upgrades";
 import { GameEngine } from "./engine";
-import { calculateResults, defaultSave, GrassCellState, GrassGrid, loadSave } from "./systems";
+import { calculateResults, defaultSave, equip, GrassCellState, GrassGrid, loadSave } from "./systems";
 
 describe("grass grid", () => {
   it("keeps exclusions out of the completion denominator", () => {
@@ -17,6 +17,11 @@ describe("grass grid", () => {
 
 describe("data and upgrades", () => {
   it("validates all five level definitions", () => { expect(levels).toHaveLength(5); for (const level of levels) expect(validateLevel(level)).toEqual([]); });
+  it("uses the requested triple-speed starter turn rate", () => { expect(calculateStats(starterLoadout).turnSpeed).toBeCloseTo(7.8); });
+  it("supports collected dock cosmetics and new mower shapes", () => {
+    const save = defaultSave(); const collected = { ...save, garage: { ...save.garage, unlockedPartIds: [...save.garage.unlockedPartIds, "dock_round_plaza", "body_wedge_aero"] } };
+    expect(parts.dock).toHaveLength(4); expect(equip(collected, "dock", "dock_round_plaza").garage.equipped.dock).toBe("dock_round_plaza"); expect(equip(collected, "dock", "body_wedge_aero")).toEqual(collected);
+  });
   it("makes a wide deck and long range battery materially different", () => {
     const standard = calculateStats(starterLoadout); const upgraded = calculateStats({ ...starterLoadout, deck: "deck_wide", battery: "battery_long_range" });
     expect(upgraded.deckRadius).toBeGreaterThan(standard.deckRadius); expect(upgraded.capacity).toBeGreaterThan(standard.capacity);
@@ -37,6 +42,26 @@ describe("runs", () => {
   it("turns left for negative steering input", () => {
     const game = new GameEngine("ranch-house", starterLoadout); game.mower.speed = 2; game.tick({ steer: -1, throttle: 0, brake: 0, reverse: 0, interact: false, pause: false }, 0.1);
     expect(game.mower.angle).toBeGreaterThan(0);
+  });
+  it("bounces off the Cul-de-Sac grass edge and keeps moving inward", () => {
+    const game = new GameEngine("cul-de-sac", starterLoadout); const limitX = game.level.world.width / 2 - game.level.world.boundaryPadding;
+    game.mower.position = { x: limitX - 0.05, z: 0 }; game.mower.angle = Math.PI / 2; game.mower.speed = game.stats.maxSpeed;
+    game.tick({ steer: 0, throttle: 1, brake: 0, reverse: 0, interact: false, pause: false }, 0.05);
+    expect(game.mower.position.x).toBe(limitX); expect(game.mower.speed).toBeGreaterThan(0); expect(game.state.message).toContain("Edge bounce");
+    const edgeX = game.mower.position.x; game.tick({ steer: 0, throttle: 1, brake: 0, reverse: 0, interact: false, pause: false }, 0.05); expect(game.mower.position.x).toBeLessThan(edgeX);
+  });
+  it("can drive off the Cul-de-Sac dock even though it sits on a driveway", () => {
+    const game = new GameEngine("cul-de-sac", starterLoadout); const before = { ...game.mower.position };
+    game.tick({ steer: 0, throttle: 1, brake: 0, reverse: 0, interact: false, pause: false }, 0.1);
+    expect(game.mower.position.z).toBeGreaterThan(before.z); expect(game.mower.speed).toBeGreaterThan(0);
+  });
+  it("stops mowing voluntarily only while parked at the dock", () => {
+    const game = new GameEngine("ranch-house", starterLoadout); game.mower.position = { x: 0, z: 0 }; game.stopMowingAtDock(); expect(game.state.status).toBe("playing");
+    game.debug.teleportToDock(); game.stopMowingAtDock(); expect(game.state.status).toBe("stopped"); expect(game.results).not.toBeNull();
+  });
+  it("can shake a bonus item loose from a bumped tree", () => {
+    const game = new GameEngine("ranch-house", starterLoadout); game.debug.bumpTreeDrop(); game.debug.bumpTreeDrop(); game.debug.bumpTreeDrop();
+    expect(game.drops.length).toBeGreaterThan(0); expect(["fruit", "frisbee", "ball", "animal"]).toContain(game.drops[0].kind);
   });
   it("plans and follows a safe return route to base", () => {
     const game = new GameEngine("ranch-house", starterLoadout); game.mower.position = { x: -7, z: 7 }; game.returnToDock(); for (let index = 0; index < 800; index += 1) game.tick(undefined, 0.03);
