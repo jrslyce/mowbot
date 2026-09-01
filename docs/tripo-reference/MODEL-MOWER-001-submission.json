@@ -1,0 +1,18 @@
+{
+  "taskId": "e81f5d856cd24e34a3980f8f0a8376ce.jjewelry-aigc-merchant-api.viMOxZvllv",
+  "provider": "Hi3D",
+  "task": "MODEL-MOWER-001",
+  "stateAtLastPoll": "processing",
+  "reference": "mowbot-chassis-reference-v1.png",
+  "request": {
+    "requestType": "geometry-and-texture",
+    "model": "hitem3dv2.1",
+    "resolution": "1536fast",
+    "face": 100000,
+    "pbr": true,
+    "shading": 0.5,
+    "format": "glb"
+  },
+  "submittedAt": "2026-08-30",
+  "notes": "Do not treat the output as runtime-ready until Blender cleanup, pivot, node naming, triangle, texture, and browser checks pass."
+}

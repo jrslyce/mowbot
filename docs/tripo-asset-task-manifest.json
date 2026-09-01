@@ -1,0 +1,553 @@
+{
+  "schemaVersion": 1,
+  "project": "RoboMow",
+  "purpose": "Offline Tripo3D generation and game-asset integration queue for MOWBOT.",
+  "usage": "Run generation tasks through the connected Tripo MCP, then complete cleanup and integration tasks locally.",
+  "defaults": {
+    "style": "stylized low-poly racing-cartoon robot lawnmower game asset, chunky readable silhouette, clean bevels, flat-shaded surfaces with restrained PBR materials, no text, no logos, no background, no floating parts",
+    "camera": "orthographic isometric three-quarter view, front of the asset facing +Z, standing on a neutral ground plane for review only",
+    "scale": "real-world proportions are not required; export with the origin at bottom-center and dimensions documented in meters",
+    "runtimeFormat": "GLB with embedded textures, applied transforms, clean normals, no hidden cameras or lights",
+    "textureBudget": "512px for small props, 1024px for mower and large props",
+    "triangleBudget": "mower 5k-15k triangles, large prop 1k-8k, small prop under 2k",
+    "runtimeRule": "visual meshes do not define gameplay collision; keep collision primitives in the engine and physics systems",
+    "referenceRule": "use only original or cleared reference images; preserve task IDs, model versions, prompts, and license tier"
+  },
+  "taskGroups": [
+    {
+      "id": "mower-models",
+      "label": "MOWBOT modular mower models",
+      "generationNotes": "Generate the hero chassis first. Generate parts against the same approved reference and attachment dimensions; do not generate five unrelated complete mowers.",
+      "tasks": [
+        {
+          "id": "MODEL-MOWER-001",
+          "kind": "model",
+          "assetKey": "mower_chassis_base",
+          "priority": "P0",
+          "generation": "tripo",
+          "method": "image-to-multiview then multiview-to-model",
+          "prompt": "A friendly autonomous robot lawnmower named MOWBOT, compact industrial chassis, rounded rectangular shell, wide cutting deck, two visible drive wheels, front bumper, dark glass sensor panel, small antenna, expressive but non-anthropomorphic design, original game asset, stylized low-poly, bold red blue yellow and dark graphite accent panels, suitable for an isometric browser game.",
+          "outputs": ["hero GLB", "front-left-right-back preview renders", "dimensions and pivot notes"],
+          "acceptance": ["front is unambiguous", "silhouette reads at 128px", "no accidental text or brand marks", "all major parts are separate or clearly named", "origin is bottom-center", "within mower triangle budget"]
+        },
+        {
+          "id": "MODEL-MOWER-002",
+          "kind": "model",
+          "assetKey": "body_basic_box",
+          "priority": "P0",
+          "generation": "blender-adaptation",
+          "method": "derive from approved chassis",
+          "prompt": "Simple square starter body shell for the approved MOWBOT chassis; sturdy entry-level robot mower body, clean planar panels and small bevels, visually distinct from the other shells while preserving the same attachment points.",
+          "outputs": ["body shell mesh", "named attachment points"],
+          "acceptance": ["fits chassis without gaps", "same origin and scale as hero chassis", "paint material is independently addressable"]
+        },
+        {
+          "id": "MODEL-MOWER-003",
+          "kind": "model",
+          "assetKey": "body_rounded_shell",
+          "priority": "P1",
+          "generation": "blender-adaptation",
+          "method": "derive from approved chassis",
+          "prompt": "Rounded aerodynamic body shell for the approved MOWBOT chassis; smooth friendly shell with broad shoulders and protected sensor housing, low-poly faceted treatment, same attachment points as the base body.",
+          "outputs": ["body shell mesh", "named attachment points"],
+          "acceptance": ["fits chassis without gaps", "same origin and scale as hero chassis", "clear visual difference from basic, heavy, wedge, and scout shells"]
+        },
+        {
+          "id": "MODEL-MOWER-004",
+          "kind": "model",
+          "assetKey": "body_heavy_utility",
+          "priority": "P1",
+          "generation": "blender-adaptation",
+          "method": "derive from approved chassis",
+          "prompt": "Heavy-duty utility body shell for the approved MOWBOT chassis; wider reinforced side panels, protective bumper blocks, practical service hatches, chunky low-poly construction, same attachment points as the base body.",
+          "outputs": ["body shell mesh", "named attachment points"],
+          "acceptance": ["fits chassis without gaps", "communicates heavier mass without excessive detail", "same origin and scale as hero chassis"]
+        },
+        {
+          "id": "MODEL-MOWER-005",
+          "kind": "model",
+          "assetKey": "body_wedge_aero",
+          "priority": "P1",
+          "generation": "blender-adaptation",
+          "method": "derive from approved chassis",
+          "prompt": "Low wedge-shaped performance body shell for the approved MOWBOT chassis; tapered front, sharp but safe aerodynamic planes, racing-cartoon energy, low-poly construction, same attachment points as the base body.",
+          "outputs": ["body shell mesh", "named attachment points"],
+          "acceptance": ["fits chassis without gaps", "front direction remains clear", "same origin and scale as hero chassis"]
+        },
+        {
+          "id": "MODEL-MOWER-006",
+          "kind": "model",
+          "assetKey": "body_compact_scout",
+          "priority": "P1",
+          "generation": "blender-adaptation",
+          "method": "derive from approved chassis",
+          "prompt": "Small compact scout body shell for the approved MOWBOT chassis; narrow footprint, raised sensor brow, nimble friendly proportions, low-poly construction, same attachment points as the base body.",
+          "outputs": ["body shell mesh", "named attachment points"],
+          "acceptance": ["fits chassis without gaps", "narrower silhouette is obvious", "same origin and scale as hero chassis"]
+        },
+        {
+          "id": "MODEL-MOWER-007",
+          "kind": "model",
+          "assetKey": "mobility_wheel_set",
+          "priority": "P0",
+          "generation": "tripo",
+          "method": "image-to-model or derive from chassis",
+          "prompt": "Pair of chunky robot lawnmower drive wheels with simple hubs and thick turf tread, stylized low-poly, designed to mount to the approved MOWBOT chassis, clean left-right symmetry, no branding.",
+          "outputs": ["wheel set GLB", "wheel axis and attachment notes"],
+          "acceptance": ["left-right symmetry", "wheel axis is clearly identified", "supports code-driven rotation"]
+        },
+        {
+          "id": "MODEL-MOWER-008",
+          "kind": "model",
+          "assetKey": "mobility_turf_tracks",
+          "priority": "P1",
+          "generation": "tripo",
+          "method": "image-to-model",
+          "prompt": "Pair of compact continuous rubber turf tracks for the approved MOWBOT chassis, rounded low-poly track housings, visible tread pattern but lightweight geometry, friendly autonomous mower game asset.",
+          "outputs": ["track set GLB", "track axis and attachment notes"],
+          "acceptance": ["same mount spacing as wheel set", "track texture does not shimmer at game camera distance", "supports code-driven movement animation"]
+        },
+        {
+          "id": "MODEL-MOWER-009",
+          "kind": "model",
+          "assetKey": "deck_set",
+          "priority": "P0",
+          "generation": "tripo",
+          "method": "derive one shared deck with three geometry variants",
+          "prompt": "Three compatible robot mower cutting deck variants: starter deck, wide deck, and precision edge deck. Low-poly circular or softly polygonal deck housings, safe enclosed cutting underside, clean attachment point to MOWBOT chassis, no exposed dangerous blades.",
+          "outputs": ["three deck meshes", "shared blade-axis marker"],
+          "acceptance": ["all variants share center and mount", "width differences are readable", "blade animation can be applied as a child node"]
+        },
+        {
+          "id": "MODEL-MOWER-010",
+          "kind": "model",
+          "assetKey": "battery_module_set",
+          "priority": "P1",
+          "generation": "blender-adaptation",
+          "method": "derive three modules from approved chassis",
+          "prompt": "Three visible swappable battery modules for a stylized autonomous mower: stock compact module, long-range elongated module, and fast-charge taller module. Industrial low-poly housings with simple status lights and a shared mounting bay.",
+          "outputs": ["three battery modules", "mounting bay notes"],
+          "acceptance": ["modules fit the same bay", "status lights are separate meshes or materials", "no legible text required"]
+        },
+        {
+          "id": "MODEL-MOWER-011",
+          "kind": "model",
+          "assetKey": "sensor_set",
+          "priority": "P1",
+          "generation": "blender-adaptation",
+          "method": "derive three modules from approved chassis",
+          "prompt": "Three compatible front sensor upgrades for MOWBOT: basic bumper, hazard-ping bumper with amber side lights, and wide-scan sensor with cyan scanning lens. Low-poly, readable from an isometric camera, shared attachment point.",
+          "outputs": ["three sensor modules", "light and scan node markers"],
+          "acceptance": ["modules share mount", "lights and scanner are independently addressable", "no tiny unreadable details"]
+        },
+        {
+          "id": "MODEL-MOWER-012",
+          "assetKey": "arms_set",
+          "kind": "model",
+          "priority": "P1",
+          "generation": "tripo-plus-blender",
+          "method": "generate one concept, split into three compatible attachments",
+          "prompt": "Three friendly cargo-handling attachments for an autonomous robot lawnmower: basic front claw, twin grabber arms, and a magnet boom. Mechanical but playful low-poly design, clear hinge joints, compact enough for an isometric browser game, same rear/front attachment convention.",
+          "outputs": ["three arm attachments", "hinge and end-effector markers"],
+          "acceptance": ["parts have clean hinge pivots", "end effectors are separate nodes", "carried objects do not intersect the chassis"]
+        }
+      ]
+    },
+    {
+      "id": "dock-models",
+      "label": "Charging dock models",
+      "tasks": [
+        {
+          "id": "MODEL-DOCK-001",
+          "kind": "model",
+          "assetKey": "dock_basic_pad",
+          "priority": "P0",
+          "generation": "tripo",
+          "method": "text-to-model",
+          "prompt": "Minimal autonomous robot mower charging dock: low rectangular charging pad, two contact rails, subtle status light, chunky stylized low-poly game prop, no text or logo, clear front approach direction.",
+          "outputs": ["dock GLB", "approach and charging-point markers"],
+          "acceptance": ["mower can visually align to pad", "charging point is separate node", "fits existing 2.2 by 1.6 world collider"]
+        },
+        {
+          "id": "MODEL-DOCK-002",
+          "kind": "model",
+          "assetKey": "dock_round_plaza",
+          "priority": "P1",
+          "generation": "blender-adaptation",
+          "method": "derive from basic dock",
+          "prompt": "Round plaza variation of the approved MOWBOT charging dock, circular pad, friendly trim, same charging point and mower approach dimensions.",
+          "outputs": ["dock GLB"],
+          "acceptance": ["same gameplay footprint", "same charging node location"]
+        },
+        {
+          "id": "MODEL-DOCK-003",
+          "kind": "model",
+          "assetKey": "dock_signal_beacon",
+          "priority": "P1",
+          "generation": "blender-adaptation",
+          "method": "derive from basic dock",
+          "prompt": "Signal beacon variation of the approved MOWBOT charging dock, tall amber beacon, compact rail pad, readable at isometric distance, same charging point and footprint.",
+          "outputs": ["dock GLB", "beacon light node"],
+          "acceptance": ["beacon is separate animated node", "same gameplay footprint"]
+        },
+        {
+          "id": "MODEL-DOCK-004",
+          "kind": "model",
+          "assetKey": "dock_solar_canopy",
+          "priority": "P1",
+          "generation": "tripo-plus-blender",
+          "method": "derive from basic dock",
+          "prompt": "Solar canopy variation of the approved MOWBOT charging dock, two slim posts and a small angled solar roof, clean low-poly construction, same charging pad and mower approach.",
+          "outputs": ["dock GLB", "canopy and charging node markers"],
+          "acceptance": ["does not block mower or camera", "same gameplay footprint", "canopy casts an intentional soft shadow"]
+        }
+      ]
+    },
+    {
+      "id": "environment-models",
+      "label": "Yard and level models",
+      "generationNotes": "Use a small reusable kit. Buildings need variants and modular dimensions; roads, water, grass, and coverage remain procedural/material-driven unless a model proves materially better.",
+      "tasks": [
+        {
+          "id": "MODEL-ENV-001",
+          "kind": "model",
+          "assetKey": "house_ranch_kit",
+          "priority": "P0",
+          "generation": "tripo-plus-blender",
+          "method": "text-to-model then modular cleanup",
+          "prompt": "Stylized suburban ranch house kit for a cheerful robot lawnmower game: simple rectangular body, broad low roof, porch, windows as flat readable materials, chunky low-poly geometry, no text, designed to scale across multiple footprint sizes.",
+          "outputs": ["house body", "roof", "porch", "window material slots"],
+          "acceptance": ["building footprint can match existing level colliders", "roof/body are separate", "occluder fade can target the body and roof"]
+        },
+        {
+          "id": "MODEL-ENV-002",
+          "kind": "model",
+          "assetKey": "cabin_kit",
+          "priority": "P1",
+          "generation": "tripo-plus-blender",
+          "method": "text-to-model then modular cleanup",
+          "prompt": "Small lakeside cabin kit for a stylized robot lawnmower game: timber walls, simple pitched roof, porch step, warm windows, low-poly readable silhouette, no text, modular footprint.",
+          "outputs": ["cabin body", "roof", "porch", "window material slots"],
+          "acceptance": ["fits both cabin levels", "roof/body are separate", "occluder fade works"]
+        },
+        {
+          "id": "MODEL-ENV-003",
+          "kind": "model",
+          "assetKey": "tree_set",
+          "priority": "P0",
+          "generation": "tripo",
+          "method": "text-to-model",
+          "prompt": "Three stylized low-poly yard tree variants for an isometric robot lawnmower game: broad trunk, faceted leafy canopy, one small, one medium, one orchard-shaped, cheerful palette, no fruit required, no background.",
+          "outputs": ["three tree variants", "trunk collider reference"],
+          "acceptance": ["silhouette reads from camera", "canopy and trunk are separate", "tree origin is ground-center", "reusable without visible repetition"]
+        },
+        {
+          "id": "MODEL-ENV-004",
+          "kind": "model",
+          "assetKey": "yard_prop_kit",
+          "priority": "P1",
+          "generation": "tripo-plus-blender",
+          "method": "generate a coherent prop sheet and split into meshes",
+          "prompt": "Coherent low-poly yard prop kit for a robot lawnmower game: mailbox, lawn chair, garden cart, simple shrub, small rock, firepit, fence section, and flowerbed edging. Same stylized proportions and palette, no text, no background.",
+          "outputs": ["individual GLBs or named meshes for each prop"],
+          "acceptance": ["each prop has ground-center origin", "small props under triangle budget", "materials can be recolored by the game"]
+        }
+      ]
+    },
+    {
+      "id": "animal-models",
+      "label": "Animal models",
+      "tasks": [
+        {
+          "id": "MODEL-ANIMAL-001",
+          "kind": "model",
+          "assetKey": "animal_dog",
+          "priority": "P1",
+          "generation": "tripo-plus-blender",
+          "method": "image-to-model with animation-ready cleanup",
+          "prompt": "Friendly stylized low-poly yard dog for a family-safe robot lawnmower game, compact body, expressive ears and tail, four sturdy legs, no collar text, clear joints for idle walk flee and return animations, non-threatening.",
+          "outputs": ["dog GLB", "animation-ready rig or joint markers"],
+          "acceptance": ["four legs are distinct", "feet contact the ground", "tail and ears can animate", "no harmed or damaged appearance"]
+        },
+        {
+          "id": "MODEL-ANIMAL-002",
+          "kind": "model",
+          "assetKey": "animal_cat",
+          "priority": "P1",
+          "generation": "tripo-plus-blender",
+          "method": "image-to-model with animation-ready cleanup",
+          "prompt": "Friendly stylized low-poly yard cat for a family-safe robot lawnmower game, compact body, upright ears, curved tail, four distinct legs, readable from an isometric camera, clear joints for idle walk flee and return animations.",
+          "outputs": ["cat GLB", "animation-ready rig or joint markers"],
+          "acceptance": ["four legs are distinct", "feet contact the ground", "tail and ears can animate"]
+        },
+        {
+          "id": "MODEL-ANIMAL-003",
+          "kind": "model",
+          "assetKey": "animal_squirrel",
+          "priority": "P1",
+          "generation": "tripo-plus-blender",
+          "method": "image-to-model with animation-ready cleanup",
+          "prompt": "Friendly stylized low-poly yard squirrel for a family-safe robot lawnmower game, small body, oversized fluffy tail, tiny readable paws, clear joints for idle hop flee and return animations, no background.",
+          "outputs": ["squirrel GLB", "animation-ready rig or joint markers"],
+          "acceptance": ["tail is separate and animateable", "feet contact the ground", "silhouette reads at game scale"]
+        }
+      ]
+    },
+    {
+      "id": "hazard-and-pickup-models",
+      "label": "Hazards and pickups",
+      "generationNotes": "Keep these visually simple and strongly color-coded. Interaction rings, warning pings, collection sparkle, and disintegration effects are Three.js effects, not Tripo models.",
+      "tasks": [
+        {
+          "id": "MODEL-HAZARD-001",
+          "kind": "model",
+          "assetKey": "hazard_hose",
+          "priority": "P1",
+          "generation": "tripo",
+          "method": "text-to-model",
+          "prompt": "Coiled garden hose hazard, stylized low-poly game prop, blue-green rubber loop with simple nozzle, readable from an isometric lawnmower game camera, no text or background.",
+          "outputs": ["hose GLB"],
+          "acceptance": ["coil remains visually separate from ground", "fits a compact circle collider", "clear color contrast against grass"]
+        },
+        {
+          "id": "MODEL-HAZARD-002",
+          "kind": "model",
+          "assetKey": "hazard_leash",
+          "priority": "P1",
+          "generation": "tripo",
+          "method": "text-to-model",
+          "prompt": "Loose pet leash hazard on grass, stylized low-poly curved loop with clasp, readable and family-safe, no text, no background.",
+          "outputs": ["leash GLB"],
+          "acceptance": ["reads as a loop from camera", "fits compact collider"]
+        },
+        {
+          "id": "MODEL-HAZARD-003",
+          "kind": "model",
+          "assetKey": "hazard_toy_set",
+          "priority": "P1",
+          "generation": "tripo",
+          "method": "text-to-model",
+          "prompt": "Small colorful children's yard toy hazard set: toy truck, rubber ball, and chunky plastic block, stylized low-poly, family-safe, no text, no background.",
+          "outputs": ["three toy meshes"],
+          "acceptance": ["each item is separately addressable", "strong primary colors", "fits small colliders"]
+        },
+        {
+          "id": "MODEL-HAZARD-004",
+          "kind": "model",
+          "assetKey": "hazard_sprinkler",
+          "priority": "P1",
+          "generation": "tripo",
+          "method": "text-to-model",
+          "prompt": "Small pop-up lawn sprinkler hazard, stylized low-poly metal and plastic head, compact base, no water simulation required, no text or background.",
+          "outputs": ["sprinkler GLB"],
+          "acceptance": ["base is ground-centered", "water spray can be added procedurally"]
+        },
+        {
+          "id": "MODEL-HAZARD-005",
+          "kind": "model",
+          "assetKey": "hazard_tool_set",
+          "priority": "P2",
+          "generation": "tripo",
+          "method": "text-to-model",
+          "prompt": "Small friendly yard hand-tool hazard set: trowel, garden shears, and hand rake, stylized low-poly, rounded family-safe shapes, no text or background.",
+          "outputs": ["three tool meshes"],
+          "acceptance": ["clear silhouettes", "fits small colliders", "no sharp threatening presentation"]
+        },
+        {
+          "id": "MODEL-HAZARD-006",
+          "kind": "model",
+          "assetKey": "hazard_bowl",
+          "priority": "P2",
+          "generation": "tripo",
+          "method": "text-to-model",
+          "prompt": "Small tipped pet water bowl on grass, stylized low-poly, readable from an isometric game camera, no text or background.",
+          "outputs": ["bowl GLB"],
+          "acceptance": ["ground-centered", "fits compact circle collider"]
+        },
+        {
+          "id": "MODEL-PICKUP-001",
+          "kind": "model",
+          "assetKey": "pickup_set",
+          "priority": "P2",
+          "generation": "tripo",
+          "method": "text-to-model",
+          "prompt": "Small collectible yard-item set for a colorful robot lawnmower game: red apple, cyan frisbee, yellow ball, and tiny friendly critter token. Chunky faceted low-poly shapes, high readability, no text, no background.",
+          "outputs": ["four pickup meshes"],
+          "acceptance": ["each pickup reads at 32px", "fits existing cargo and ring effects", "no accidental animal harm implication"]
+        }
+      ]
+    },
+    {
+      "id": "animation-tasks",
+      "label": "Animation tasks",
+      "generationNotes": "Mechanical mower animations should be implemented in Three.js from named nodes. Use Tripo rigging/retargeting only where it produces a clean result for animals; validate every clip in Blender before integration.",
+      "tasks": [
+        {
+          "id": "ANIM-MOWER-001",
+          "kind": "animation",
+          "assetKey": "mower_idle",
+          "relatedModel": "mower_chassis_base",
+          "priority": "P0",
+          "generation": "code",
+          "method": "Three.js procedural animation",
+          "brief": "Subtle idle loop: antenna sway, small sensor light pulse, and gentle body settle. Keep the chassis visually stable.",
+          "acceptance": ["seamless loop", "does not move the gameplay root", "works with all body shells"]
+        },
+        {
+          "id": "ANIM-MOWER-002",
+          "kind": "animation",
+          "assetKey": "mower_drive",
+          "relatedModel": "mobility_wheel_set",
+          "priority": "P0",
+          "generation": "code",
+          "method": "Three.js procedural rotation",
+          "brief": "Spin wheel hubs or track textures based on signed mower speed. Stop when stationary and reverse direction when reversing.",
+          "acceptance": ["speed-proportional", "reverses correctly", "does not affect collision or movement state"]
+        },
+        {
+          "id": "ANIM-MOWER-003",
+          "kind": "animation",
+          "assetKey": "mower_cutting",
+          "relatedModel": "deck_set",
+          "priority": "P0",
+          "generation": "code",
+          "method": "Three.js procedural blade rotation and effect",
+          "brief": "Rotate an enclosed deck blade node while cutting, stop in reserve mode or when docked, and add a lightweight grass-clipping effect.",
+          "acceptance": ["blade is never exposed as a dangerous visible prop", "stops when cutting is disabled", "does not add one mesh per grass blade"]
+        },
+        {
+          "id": "ANIM-MOWER-004",
+          "kind": "animation",
+          "assetKey": "mower_bump_recoil",
+          "relatedModel": "mower_chassis_base",
+          "priority": "P1",
+          "generation": "code",
+          "method": "Three.js spring/tween on visual root",
+          "brief": "Short non-destructive bump reaction: small tilt, recoil, and light flash after a hazard or animal collision.",
+          "acceptance": ["visual-only reaction", "does not change engine position", "returns to neutral without popping"]
+        },
+        {
+          "id": "ANIM-MOWER-005",
+          "kind": "animation",
+          "assetKey": "mower_dock_charge",
+          "relatedModel": "dock_basic_pad",
+          "priority": "P1",
+          "generation": "code",
+          "method": "Three.js procedural alignment, light pulse, and particles",
+          "brief": "Docking presentation: slow visual settle, contact-light activation, charging pulse, and optional small upward energy particles.",
+          "acceptance": ["triggers only from dock state", "charging state remains engine-owned", "works with all dock variants"]
+        },
+        {
+          "id": "ANIM-MOWER-006",
+          "kind": "animation",
+          "assetKey": "mower_sensor_scan",
+          "relatedModel": "sensor_set",
+          "priority": "P1",
+          "generation": "code",
+          "method": "Three.js procedural scanner sweep",
+          "brief": "Hazard-ping and wide-scan upgrades show a readable cyan or amber sweep without changing sensor gameplay rules.",
+          "acceptance": ["only active for equipped sensor", "low cost on mobile", "does not obscure inspection clicks"]
+        },
+        {
+          "id": "ANIM-MOWER-007",
+          "kind": "animation",
+          "assetKey": "arms_pickup_deliver",
+          "relatedModel": "arms_set",
+          "priority": "P2",
+          "generation": "code",
+          "method": "Three.js procedural hinge animation",
+          "brief": "Open, close, and settle the equipped claw, grabber, or magnet boom when collecting and delivering a tree drop.",
+          "acceptance": ["uses named hinge nodes", "works with all three arm styles", "cargo remains attached to the engine carried state"]
+        },
+        {
+          "id": "ANIM-ANIMAL-001",
+          "kind": "animation",
+          "assetKey": "animal_dog_motion",
+          "relatedModel": "animal_dog",
+          "priority": "P1",
+          "generation": "tripo-candidate-plus-blender",
+          "method": "rig-check, rig, and retarget if clean; otherwise Blender or procedural keyframes",
+          "brief": "Dog animation set: idle, walk, alert, flee, and return. Family-safe, feet planted, readable at game scale.",
+          "clips": ["idle", "walk", "alert", "flee", "return"],
+          "acceptance": ["no foot skating that is visible from game camera", "flee and return can blend", "no animation depicts harm"]
+        },
+        {
+          "id": "ANIM-ANIMAL-002",
+          "kind": "animation",
+          "assetKey": "animal_cat_motion",
+          "relatedModel": "animal_cat",
+          "priority": "P1",
+          "generation": "tripo-candidate-plus-blender",
+          "method": "rig-check, rig, and retarget if clean; otherwise Blender or procedural keyframes",
+          "brief": "Cat animation set: idle, walk, alert, flee, and return. Include a readable tail pose and soft non-threatening reactions.",
+          "clips": ["idle", "walk", "alert", "flee", "return"],
+          "acceptance": ["tail remains attached", "clips blend cleanly", "no animation depicts harm"]
+        },
+        {
+          "id": "ANIM-ANIMAL-003",
+          "kind": "animation",
+          "assetKey": "animal_squirrel_motion",
+          "relatedModel": "animal_squirrel",
+          "priority": "P1",
+          "generation": "tripo-candidate-plus-blender",
+          "method": "rig-check, rig, and retarget if clean; otherwise Blender or procedural keyframes",
+          "brief": "Squirrel animation set: idle, hop or walk, alert, flee, and return. Give the tail a readable bounce without excessive secondary motion.",
+          "clips": ["idle", "walk", "alert", "flee", "return"],
+          "acceptance": ["tail remains attached", "small silhouette remains readable", "no animation depicts harm"]
+        },
+        {
+          "id": "ANIM-WORLD-001",
+          "kind": "animation",
+          "assetKey": "tree_bump_drop",
+          "relatedModel": "tree_set",
+          "priority": "P2",
+          "generation": "code",
+          "method": "Three.js procedural shake",
+          "brief": "Brief tree canopy and trunk shake when bumped, followed by a visible but lightweight drop spawn.",
+          "acceptance": ["tree returns to original transform", "drop spawning remains engine-owned", "does not disturb occlusion logic"]
+        },
+        {
+          "id": "ANIM-WORLD-002",
+          "kind": "animation",
+          "assetKey": "pickup_hover",
+          "relatedModel": "pickup_set",
+          "priority": "P2",
+          "generation": "code",
+          "method": "Three.js procedural hover and spin",
+          "brief": "Slow hover, rotation, and collection pop for fruit, frisbee, ball, and critter-token pickups.",
+          "acceptance": ["low draw and CPU cost", "does not change pickup collision", "readable on mobile"]
+        }
+      ]
+    }
+  ],
+  "integrationTasks": [
+    {
+      "id": "INTEGRATE-001",
+      "kind": "pipeline",
+      "priority": "P0",
+      "brief": "Create an asset registry mapping existing upgrade IDs and level object types to approved GLB files, with a procedural fallback for every asset.",
+      "likelyFiles": ["src/data/assets.ts", "src/data/upgrades.ts", "src/data/levels.ts", "src/types.ts", "src/renderer.ts"]
+    },
+    {
+      "id": "INTEGRATE-002",
+      "kind": "pipeline",
+      "priority": "P0",
+      "brief": "Add GLB loading, caching, disposal, named-node lookup, material recoloring, and failure fallback without moving gameplay rules into the renderer.",
+      "likelyFiles": ["src/renderer.ts"]
+    },
+    {
+      "id": "INTEGRATE-003",
+      "kind": "qa",
+      "priority": "P0",
+      "brief": "Verify garage, gameplay, inspection cards, docking, results gallery, occlusion fade, desktop, and 320x568 mobile layouts with the new assets.",
+      "likelyFiles": ["tests/mowbot.spec.ts", "src/systems.test.ts"]
+    },
+    {
+      "id": "INTEGRATE-004",
+      "kind": "qa",
+      "priority": "P0",
+      "brief": "Run npm run check and record model load time, total GLB bytes, triangle count, draw calls, and representative renderer.info values before and after asset replacement.",
+      "likelyFiles": ["README.md"]
+    }
+  ]
+}

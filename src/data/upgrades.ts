@@ -42,11 +42,16 @@ export const parts: Record<string, Part[]> = {
     { id: "dock_round_plaza", name: "Round Plaza" },
     { id: "dock_signal_beacon", name: "Signal Beacon" },
     { id: "dock_solar_canopy", name: "Solar Canopy" }
+  ],
+  arms: [
+    { id: "arms_basic_claw", name: "Basic Claw", pickupRadius: 0.9, basketCapacity: 1, style: "claw" },
+    { id: "arms_twin_grabber", name: "Twin Grabber", pickupRadius: 1.05, basketCapacity: 2, style: "twin-grabber" },
+    { id: "arms_magnet_boom", name: "Magnet Boom", pickupRadius: 1.2, basketCapacity: 3, style: "magnet" }
   ]
 };
 
 export const starterLoadout: EquippedLoadout = {
-  body: "body_basic_box", color: "color_factory_green", mobility: "mobility_standard_wheels", deck: "deck_starter", battery: "battery_stock", sensor: "sensor_basic", dock: "dock_basic_pad"
+  body: "body_basic_box", color: "color_factory_green", mobility: "mobility_standard_wheels", deck: "deck_starter", battery: "battery_stock", sensor: "sensor_basic", dock: "dock_basic_pad", arms: "arms_basic_claw"
 };
 
 const find = (group: string, id: string) => parts[group].find((part) => part.id === id) ?? parts[group][0];
@@ -55,12 +60,12 @@ const turnSpeedMultiplier = 3;
 
 export function calculateStats(loadout: EquippedLoadout): MowerStats {
   const body = find("body", loadout.body); const color = find("color", loadout.color); const mobility = find("mobility", loadout.mobility);
-  const deck = find("deck", loadout.deck); const battery = find("battery", loadout.battery); const sensor = find("sensor", loadout.sensor);
+  const deck = find("deck", loadout.deck); const battery = find("battery", loadout.battery); const sensor = find("sensor", loadout.sensor); const arms = find("arms", loadout.arms);
   return {
     maxSpeed: 4, acceleration: 7 * Number(mobility.acceleration), turnSpeed: 2.6 * turnSpeedMultiplier * Number(body.turn) * Number(mobility.turn),
     deckRadius: 0.62 * Number(deck.width), capacity: 100 * Number(battery.capacity), rechargeRate: 25 * Number(battery.recharge),
     drain: Number(mobility.drain) * Number(deck.drain) * Number(battery.drain), sensorRadius: 1.6 * Number(sensor.reveal),
-    color: String(color.color), tracks: Boolean(mobility.tracks)
+    color: String(color.color), tracks: Boolean(mobility.tracks), arms: String(arms.id), pickupRadius: Number(arms.pickupRadius), basketCapacity: Number(arms.basketCapacity)
   };
 }
 
