@@ -22,6 +22,11 @@ describe("data and upgrades", () => {
     const save = defaultSave(); const collected = { ...save, garage: { ...save.garage, unlockedPartIds: [...save.garage.unlockedPartIds, "dock_round_plaza", "body_wedge_aero"] } };
     expect(parts.dock).toHaveLength(4); expect(equip(collected, "dock", "dock_round_plaza").garage.equipped.dock).toBe("dock_round_plaza"); expect(equip(collected, "dock", "body_wedge_aero")).toEqual(collected);
   });
+  it("adds pickup Arms with distinct carrying capacities", () => {
+    expect(parts.arms).toHaveLength(3); expect(starterLoadout.arms).toBe("arms_basic_claw");
+    const basic = calculateStats(starterLoadout); const upgraded = calculateStats({ ...starterLoadout, arms: "arms_magnet_boom" });
+    expect(basic.basketCapacity).toBe(1); expect(upgraded.basketCapacity).toBe(3); expect(upgraded.pickupRadius).toBeGreaterThan(basic.pickupRadius);
+  });
   it("makes a wide deck and long range battery materially different", () => {
     const standard = calculateStats(starterLoadout); const upgraded = calculateStats({ ...starterLoadout, deck: "deck_wide", battery: "battery_long_range" });
     expect(upgraded.deckRadius).toBeGreaterThan(standard.deckRadius); expect(upgraded.capacity).toBeGreaterThan(standard.capacity);
@@ -50,6 +55,16 @@ describe("runs", () => {
     expect(game.mower.position.x).toBe(limitX); expect(game.mower.speed).toBeGreaterThan(0); expect(game.state.message).toContain("Edge bounce");
     const edgeX = game.mower.position.x; game.tick({ steer: 0, throttle: 1, brake: 0, reverse: 0, interact: false, pause: false }, 0.05); expect(game.mower.position.x).toBeLessThan(edgeX);
   });
+  it("bounces away from a house instead of stopping", () => {
+    const game = new GameEngine("ranch-house", starterLoadout); game.mower.position = { x: -1.7, z: -1.8 }; game.mower.angle = Math.PI / 2; game.mower.speed = game.stats.maxSpeed;
+    game.tick({ steer: 0, throttle: 1, brake: 0, reverse: 0, interact: false, pause: false }, 0.05);
+    expect(game.mower.position.x).toBeLessThan(-1.7); expect(Math.sin(game.mower.angle)).toBeLessThan(0); expect(game.mower.speed).toBeGreaterThan(0); expect(game.state.message).toContain("House bounce");
+  });
+  it("bounces away from a tree and keeps the tree interaction", () => {
+    const game = new GameEngine("ranch-house", starterLoadout); game.mower.position = { x: -9.12, z: 6.5 }; game.mower.angle = Math.PI / 2; game.mower.speed = game.stats.maxSpeed;
+    game.tick({ steer: 0, throttle: 1, brake: 0, reverse: 0, interact: false, pause: false }, 0.05);
+    expect(game.mower.position.x).toBeLessThan(-9.12); expect(Math.sin(game.mower.angle)).toBeLessThan(0); expect(game.mower.speed).toBeGreaterThan(0); expect(game.drops.length).toBeGreaterThan(0);
+  });
   it("can drive off the Cul-de-Sac dock even though it sits on a driveway", () => {
     const game = new GameEngine("cul-de-sac", starterLoadout); const before = { ...game.mower.position };
     game.tick({ steer: 0, throttle: 1, brake: 0, reverse: 0, interact: false, pause: false }, 0.1);
@@ -62,6 +77,18 @@ describe("runs", () => {
   it("can shake a bonus item loose from a bumped tree", () => {
     const game = new GameEngine("ranch-house", starterLoadout); game.debug.bumpTreeDrop(); game.debug.bumpTreeDrop(); game.debug.bumpTreeDrop();
     expect(game.drops.length).toBeGreaterThan(0); expect(["fruit", "frisbee", "ball", "animal"]).toContain(game.drops[0].kind);
+  });
+  it("slows unfinished tall grass and requires repeated passes before cutting", () => {
+    const game = new GameEngine("ranch-house", starterLoadout); const patch = game.level.tallGrassPatches[0];
+    game.mower.position = { ...patch.center }; game.mower.speed = game.stats.maxSpeed; game.tick(undefined, 0.01);
+    expect(game.mower.speed).toBeLessThan(game.stats.maxSpeed); expect(game.tallGrassPasses.get(patch.id)).toBe(1); const firstCut = game.state.cutCells;
+    for (let pass = 1; pass < patch.passesRequired; pass += 1) { game.mower.position = { x: patch.center.x + patch.width, z: patch.center.z }; game.mower.speed = 0; game.tick(undefined, 0.01); game.mower.position = { ...patch.center }; game.mower.speed = 0; game.tick(undefined, 0.01); }
+    expect(game.tallGrassPasses.get(patch.id)).toBe(patch.passesRequired); expect(game.state.cutCells).toBeGreaterThan(firstCut);
+  });
+  it("loads a tree drop with Arms and delivers it to the dock basket", () => {
+    const game = new GameEngine("ranch-house", starterLoadout); game.debug.bumpTreeDrop(); const drop = game.drops[0]; expect(drop).toBeDefined();
+    game.mower.position = { ...drop.position }; game.mower.speed = 0; game.tick(undefined, 0.01); expect(drop.carried).toBe(true); expect(game.state.carriedItems).toContain(drop.id);
+    game.debug.teleportToDock(); game.tick(undefined, 0.01); expect(drop.delivered).toBe(true); expect(game.state.carriedItems).toHaveLength(0); expect(game.state.deliveredItems).toBe(1);
   });
   it("plans and follows a safe return route to base", () => {
     const game = new GameEngine("ranch-house", starterLoadout); game.mower.position = { x: -7, z: 7 }; game.returnToDock(); for (let index = 0; index < 800; index += 1) game.tick(undefined, 0.03);

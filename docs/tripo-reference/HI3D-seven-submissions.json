@@ -1,0 +1,27 @@
+{
+  "provider": "Hi3D",
+  "submittedAt": "2026-08-30",
+  "request": {
+    "requestType": "geometry-and-texture",
+    "model": "hitem3dv2.1",
+    "resolution": "1536fast",
+    "face": 100000,
+    "pbr": true,
+    "shading": 0.5,
+    "format": "glb"
+  },
+  "assets": [
+    { "task": "MODEL-DOCK-001", "assetKey": "dock_basic_pad", "taskId": "f6b9bfb7468b470ebae2623f813bf360.jjewelry-aigc-merchant-api.9vkSApaZQ6", "state": "success", "runtimePath": "public/assets/models/dock-basic.glb" },
+    { "task": "MODEL-ENV-001", "assetKey": "house_ranch_kit", "taskId": "5b99c54b13924a80a99e62873c107142.jjewelry-aigc-merchant-api.899kbGTr2F", "state": "success", "runtimePath": "public/assets/models/ranch-house.glb" },
+    { "task": "MODEL-ENV-002", "assetKey": "cabin_kit", "taskId": "3d3c84769ec54942b1d81afb92252c71.jjewelry-aigc-merchant-api.AavudO7ikr", "state": "success", "runtimePath": "public/assets/models/cabin.glb" },
+    { "task": "MODEL-ENV-003", "assetKey": "tree_set", "taskId": "101de9cc1ee44b9a9664b8799d8e70b2.jjewelry-aigc-merchant-api.bnPdDIQfPA", "state": "success", "runtimePath": "public/assets/models/tree.glb" },
+    { "task": "MODEL-ANIMAL-001", "assetKey": "animal_dog", "taskId": "365d0de7a23044a887476694ef69a16c.jjewelry-aigc-merchant-api.7ZSQUJKAno", "state": "success", "runtimePath": "public/assets/models/dog.glb" },
+    { "task": "MODEL-ANIMAL-002", "assetKey": "animal_cat", "taskId": "61f033864eea4b3eb41b9dfd4e58f837.jjewelry-aigc-merchant-api.mXEDdPaq7H", "state": "success", "runtimePath": "public/assets/models/cat.glb" },
+    { "task": "MODEL-ANIMAL-003", "assetKey": "animal_squirrel", "taskId": "c66a3d5f81e140e1b7e2d99ef1fd9ce7.jjewelry-aigc-merchant-api.GAEFSc98BZ", "state": "success", "runtimePath": "public/assets/models/squirrel.glb" }
+  ],
+  "notes": [
+    "All seven selected task results were downloaded and staged as raw GLB runtime assets.",
+    "Keep gameplay collision and movement procedural; imported GLBs are visual assets only.",
+    "Run Blender cleanup and browser-size validation before treating these raw exports as final production assets."
+  ]
+}

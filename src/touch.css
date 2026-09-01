@@ -61,3 +61,33 @@
 
   .hud-bottom .message { flex-basis: 100%; }
 }
+
+/* Arcade control cluster */
+.touch-controls { gap: 8px; filter: drop-shadow(0 7px 8px rgba(0,0,0,.32)); }
+.touch-pad { grid-template-columns: repeat(3, 48px); grid-template-rows: repeat(3, 48px); gap: 2px; transform: rotate(-2deg); }
+.touch-direction {
+  width: 48px;
+  height: 48px;
+  min-width: 48px;
+  min-height: 48px;
+  border: 2px solid var(--warm-white);
+  border-radius: 9px 3px 9px 3px;
+  background: rgba(7,17,31,.92);
+  color: var(--safety-yellow);
+  box-shadow: 0 4px 0 var(--road-black), inset 0 2px 0 rgba(255,255,255,.16);
+  font-size: 18px;
+}
+.touch-direction:hover { background: rgba(7,17,31,.92); transform: none; box-shadow: 0 4px 0 var(--road-black), inset 0 2px 0 rgba(255,255,255,.16); }
+.touch-direction:active { background: var(--safety-yellow); color: var(--road-black); transform: translateY(3px); box-shadow: 0 1px 0 var(--road-black); }
+.touch-return { min-width: 106px; min-height: 46px; border-color: var(--warm-white); background: var(--race-blue); color: var(--warm-white); box-shadow: 0 4px 0 var(--road-black), inset 0 2px 0 rgba(255,255,255,.22); }
+.touch-return:hover { background: #2873ee; }
+
+@media (max-width: 700px) and (orientation: portrait) {
+  .hud-bottom { margin-bottom: calc(218px + env(safe-area-inset-bottom)); }
+}
+
+@media (max-height: 480px) and (orientation: landscape) {
+  .touch-pad { grid-template-columns: repeat(3, 42px); grid-template-rows: repeat(3, 42px); }
+  .touch-direction { width: 42px; height: 42px; min-width: 42px; min-height: 42px; font-size: 15px; }
+  .touch-return { min-width: 92px; min-height: 40px; font-size: 10px; }
+}
